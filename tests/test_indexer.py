@@ -126,3 +126,25 @@ def test_multiword_lookup_returns_empty_for_print_style_api() -> None:
     ix = Indexer()
     ix.add_document("http://m/", "good friends")
     assert ix.get_postings_for_term("good friends") == {}
+
+
+def test_get_postings_for_blank_term_returns_empty() -> None:
+    ix = Indexer()
+    ix.add_document("http://x/", "word")
+    assert ix.get_postings_for_term("") == {}
+    assert ix.get_postings_for_term("   ") == {}
+
+
+def test_posting_from_dict_non_list_positions_becomes_empty() -> None:
+    p = Indexer.posting_from_dict({"frequency": 2, "positions": "not-a-list"})
+    assert p.positions == []
+
+
+def test_reindex_skips_stale_inner_when_empty() -> None:
+    """Purge path when a listed term has no remaining postings dict (edge case)."""
+    ix = Indexer()
+    ix.add_document("http://x/", "only")
+    ix._index["ghost"] = {}
+    ix._url_terms["http://x/"] = {"only", "ghost"}
+    ix.add_document("http://x/", "fresh text here")
+    assert ix.get_postings_for_term("fresh")

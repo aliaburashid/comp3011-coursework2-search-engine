@@ -150,8 +150,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return _cmd_print(args.word)
     if args.command == "find":
         return _cmd_find(list(args.terms))
-    return 1
+    return 1  # pragma: no cover
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main())  # pragma: no cover

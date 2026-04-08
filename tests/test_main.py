@@ -69,6 +69,29 @@ def test_print_no_index_file(tmp_path, monkeypatch) -> None:
     assert main_mod.main(["print", "word"]) == 1
 
 
+def test_find_no_index_file(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(main_mod, "INDEX_FILE", tmp_path / "nope.json")
+    assert main_mod.main(["find", "any", "terms"]) == 1
+
+
+def test_print_uses_in_memory_index_after_build(tmp_path, monkeypatch, capsys) -> None:
+    """After build, print should use _loaded_index without reloading JSON from disk."""
+    monkeypatch.setattr(main_mod, "INDEX_FILE", tmp_path / "index.json")
+
+    def boom_load(_path: object) -> None:
+        raise AssertionError("should use in-memory index, not disk")
+
+    monkeypatch.setattr(main_mod, "_load_json_index", boom_load)
+    monkeypatch.setattr(
+        main_mod,
+        "crawl_to_indexer_payload",
+        lambda **kwargs: [("http://ex/", "hello there")],
+    )
+    assert main_mod.main(["build"]) == 0
+    assert main_mod.main(["print", "hello"]) == 0
+    assert "hello" in capsys.readouterr().out
+
+
 def test_print_unknown_word_message(tmp_path, monkeypatch, capsys) -> None:
     monkeypatch.setattr(main_mod, "INDEX_FILE", tmp_path / "index.json")
     monkeypatch.setattr(
