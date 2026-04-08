@@ -44,6 +44,31 @@ def test_page_plain_text_drops_script_and_styles() -> None:
     assert "World" in text
 
 
+def test_page_plain_text_prefers_quote_bodies_on_quotes_site() -> None:
+    html = """
+    <html><body>
+    <nav>Home Next Login</nav>
+    <div class="quote"><span class="text">“First quote body.”</span></div>
+    <footer>Copyright noise</footer>
+    </body></html>
+    """
+    text = page_plain_text(html)
+    assert "First quote body" in text
+    assert "Home Next Login" not in text
+    assert "Copyright noise" not in text
+
+
+def test_page_plain_text_joins_multiple_quotes() -> None:
+    html = """
+    <div class="quote"><span class="text">Alpha wisdom.</span></div>
+    <div class="quote"><span class="text">Beta truth.</span></div>
+    """
+    text = page_plain_text(html)
+    assert "Alpha wisdom" in text
+    assert "Beta truth" in text
+    assert text.index("Alpha") < text.index("Beta")
+
+
 def test_harvest_same_host_links_resolves_relative() -> None:
     html = """
     <a href="/page/2/">next</a>

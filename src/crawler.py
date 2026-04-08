@@ -10,9 +10,9 @@ once before it is first processed; de-duplication happens when a URL is popped
 via the ``finished`` set. That trades a little memory for simpler code—fine at
 this site’s scale.
 
-**Text extraction:** :func:`page_plain_text` indexes broadly (whole document
-minus scripts/styles). You could later restrict to main content only; not
-required for the core brief.
+**Text extraction:** :func:`page_plain_text` prefers **quote body text** from
+each ``div.quote span.text`` on this site; if none are found, it falls back to
+whole-page visible text (minus scripts/styles).
 
 **Politeness:** The delay runs before *every* HTTP attempt after the first,
 including after failures—so spacing between outbound requests stays at least
@@ -50,18 +50,36 @@ def hostname_matches(url: str, allowed_host: str) -> bool:
     return bits.netloc.lower() == allowed_host.lower()
 
 
+def _fallback_full_page_plain_text(soup: BeautifulSoup) -> str:
+    """Strip scripts/styles then take all visible text (legacy whole-page path)."""
+    chunks = soup.get_text("\n", strip=True)
+    return "\n".join(line for line in chunks.splitlines() if line)
+
+
 def page_plain_text(html: str) -> str:
     """
-    Visible text from the full HTML document (minus ``script``/``style`` noise).
+    Text to index for quotes.toscrape.com.
 
-    Whole-page text keeps the coursework simple; narrowing to quote/author
-    regions only would be a refinement, not a requirement here.
+    Prefer each quote’s main body: ``div.quote span.text`` (site template), joined
+    with blank lines—this cuts nav, tag sidebars, and duplicate chrome. If no
+    quote blocks match (unusual page), fall back to visible document text.
     """
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "noscript"]):
         tag.decompose()
-    chunks = soup.get_text("\n", strip=True)
-    return "\n".join(line for line in chunks.splitlines() if line)
+
+    # quotes.toscrape.com: one span.text per quote card
+    quote_spans = soup.select("div.quote span.text")
+    if quote_spans:
+        bodies: List[str] = []
+        for span in quote_spans:
+            chunk = span.get_text("\n", strip=True)
+            if chunk:
+                bodies.append(chunk)
+        if bodies:
+            return "\n\n".join(bodies)
+
+    return _fallback_full_page_plain_text(soup)
 
 
 def harvest_same_host_links(html: str, current_url: str, allowed_host: str) -> List[str]:

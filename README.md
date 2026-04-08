@@ -133,7 +133,7 @@ On some **macOS** setups, `pytest` may still print one harmless **urllib3 / Libr
 - **Inverted index:** maps each canonical term to URLs with `PagePosting` (frequency + positions in the page token stream).
 - **Tokenisation:** lowercased alphanumeric tokens; punctuation removed; hyphens split words (same rules for indexing and queries).
 - **`find`:** intersection of URL sets per term (AND), not phrase proximity.
-- **Crawler:** breadth-first traversal of same-host links; whole-page visible text (scripts/styles stripped).
+- **Crawler:** breadth-first traversal of same-host links; text from each ``div.quote span.text`` when present (quotes.toscrape.com layout), else whole-page visible text (scripts/styles stripped).
 - **Politeness:** delay before every request after the first, including after failures—keeps spacing between outbound calls predictable.
 
 ## Error handling / edge cases
