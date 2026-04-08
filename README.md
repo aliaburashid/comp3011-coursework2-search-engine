@@ -126,6 +126,8 @@ Optional coverage (shows lines not exercised by tests):
 pytest --cov=src --cov-report=term-missing
 ```
 
+On some **macOS** setups, `pytest` may still print one harmless **urllib3 / LibreSSL** notice in the warnings summary; it does not fail tests. Running `python src/main.py --help` stays quiet because `main.py` filters that warning before importing the crawler.
+
 ## Design decisions (short)
 
 - **Inverted index:** maps each canonical term to URLs with `PagePosting` (frequency + positions in the page token stream).

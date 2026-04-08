@@ -13,8 +13,15 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import warnings
 from pathlib import Path
 from typing import List, Optional
+
+# macOS / LibreSSL: suppress urllib3's one-time OpenSSL notice (before requests imports urllib3).
+warnings.filterwarnings(
+    "ignore",
+    message=r".*urllib3 v2 only supports OpenSSL.*",
+)
 
 from crawler import crawl_to_indexer_payload
 from indexer import Indexer
