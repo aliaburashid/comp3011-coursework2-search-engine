@@ -115,12 +115,12 @@ def _cmd_find(term_tokens: List[str]) -> int:
         print("No query terms.")
         return 0
     lookup = SearchService(idx)
-    hits = lookup.urls_for_find(query)
+    hits = lookup.scored_urls_for_find(query)
     if not hits:
         print("No matching pages.")
         return 0
-    for url in hits:
-        print(url)
+    for url, score in hits:
+        print(f"{score:.4f} {url}")
     return 0
 
 

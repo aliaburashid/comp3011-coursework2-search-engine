@@ -13,7 +13,7 @@ descending score order. Ties are resolved alphabetically by URL for stable outpu
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
 from indexer import Indexer, PagePosting, normalize_term, tokenize
 
@@ -51,6 +51,12 @@ class SearchService:
         return self._inverted.get_postings_for_term(raw_word)
 
     def urls_for_find(self, raw_query: str) -> List[str]:
+        """
+        Backward-compatible URL-only view of ranked find results.
+        """
+        return [url for url, _score in self.scored_urls_for_find(raw_query)]
+
+    def scored_urls_for_find(self, raw_query: str) -> List[Tuple[str, float]]:
         """
         URLs of pages that contain **all** query terms (AND).
 
@@ -92,7 +98,7 @@ class SearchService:
                 scores[url] += tf * idf
 
         ranked = sorted(urls_still_valid, key=lambda url: (-scores[url], url))
-        return ranked
+        return [(url, scores[url]) for url in ranked]
 
     def _document_count(self) -> int:
         if self._cached_document_count is not None:

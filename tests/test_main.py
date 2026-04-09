@@ -135,7 +135,11 @@ def test_find_matches_and_intersection(tmp_path, monkeypatch, capsys) -> None:
     capsys.readouterr()
     assert main_mod.main(["find", "alpha", "beta"]) == 0
     out = capsys.readouterr().out.strip().splitlines()
-    assert out == ["http://a/"]
+    assert len(out) == 1
+    assert out[0].endswith(" http://a/")
+    score_text = out[0].split(" ", 1)[0]
+    assert "." in score_text
+    assert len(score_text.split(".", 1)[1]) == 4
 
 
 def test_find_no_matching_pages_message(tmp_path, monkeypatch, capsys) -> None:

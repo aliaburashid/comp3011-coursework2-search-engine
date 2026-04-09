@@ -98,6 +98,17 @@ def test_find_tf_idf_ranks_higher_term_frequency_first() -> None:
     ]
 
 
+def test_scored_find_returns_score_and_url_in_rank_order() -> None:
+    inverted = Indexer()
+    inverted.add_document("http://a.site/", "alpha alpha beta")
+    inverted.add_document("http://b.site/", "alpha beta")
+    svc = SearchService(inverted)
+    scored = svc.scored_urls_for_find("alpha beta")
+    assert scored[0][0] == "http://a.site/"
+    assert scored[1][0] == "http://b.site/"
+    assert scored[0][1] > scored[1][1]
+
+
 def test_find_case_insensitive(search: SearchService) -> None:
     assert search.urls_for_find("ALPHA Beta") == ["http://a.example/page"]
 
