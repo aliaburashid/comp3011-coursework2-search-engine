@@ -136,7 +136,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p_print = sub.add_parser("print", help="Show inverted-index postings for one word")
     p_print.add_argument("word", help="Single token (same token rules as the indexer)")
 
-    p_find = sub.add_parser("find", help="List pages containing all query terms (AND)")
+    p_find = sub.add_parser("find", help="List pages containing all query terms (AND), ranked")
     p_find.add_argument(
         "terms",
         nargs="*",

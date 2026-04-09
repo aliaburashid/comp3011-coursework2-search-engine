@@ -1,4 +1,4 @@
-"""Tests for :mod:`search` — print-style postings and AND-based find."""
+"""Tests for :mod:`search` — print-style postings and ranked AND-based find."""
 
 from __future__ import annotations
 
@@ -73,7 +73,7 @@ def test_find_missing_term_returns_nothing(search: SearchService) -> None:
     assert search.urls_for_find("ghost") == []
 
 
-def test_find_urls_sorted_stably(search: SearchService) -> None:
+def test_find_tie_breaks_stably_by_url(search: SearchService) -> None:
     inverted = Indexer()
     inverted.add_document("http://z.site/", "shared word")
     inverted.add_document("http://a.site/", "shared word")
@@ -83,6 +83,18 @@ def test_find_urls_sorted_stably(search: SearchService) -> None:
         "http://a.site/",
         "http://m.site/",
         "http://z.site/",
+    ]
+
+
+def test_find_tf_idf_ranks_higher_term_frequency_first() -> None:
+    inverted = Indexer()
+    inverted.add_document("http://a.site/", "alpha alpha beta")
+    inverted.add_document("http://b.site/", "alpha beta")
+    inverted.add_document("http://c.site/", "beta beta beta")
+    svc = SearchService(inverted)
+    assert svc.urls_for_find("alpha beta") == [
+        "http://a.site/",
+        "http://b.site/",
     ]
 
 
