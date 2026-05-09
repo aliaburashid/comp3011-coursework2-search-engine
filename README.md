@@ -2,24 +2,28 @@
 
 ## Project overview
 
-Individual **Python command-line** tool for [quotes.toscrape.com](https://quotes.toscrape.com/): it **crawls** the site (polite delay between requests), **builds an inverted index** with per-page word statistics, **saves** the index to disk, and **searches** with `print` (single word) and `find` (multi-word **AND**). Target module: **COMP3011** (Web Services and Web Data).
+**Python command-line search tool** for [quotes.toscrape.com](https://quotes.toscrape.com/). It crawls the site with a **6-second politeness delay**, builds and saves an **inverted index** with per-page term statistics, and supports **`build`**, **`load`**, **`print`**, and **TF-IDF-ranked `find`** queries. Module: **COMP3011** (Web Services and Web Data).
 
 ## Features
 
 - **Polite crawling:** at least **6 seconds** between successive HTTP GET attempts (none before the first).
-- **Indexing:** case-insensitive tokenisation (`[a-z0-9]+`); inverted index stores **frequency** and **token positions** per page.
-- **Persistence:** index serialised as **JSON** at `data/index.json`.
-- **Search:** `find` uses **Boolean AND** over query terms, then ranks matches with **TF-IDF** and prints `score url`.
-- **Tests:** automated suite with **mocked HTTP** for the crawler and CLI tests for `main`.
+- **Inverted index:** case-insensitive tokenisation (`[a-z0-9]+`); per-page **frequency** and **positions**; serialised to **`data/index.json`**.
+- **Search:** **`print`** for one term; **`find`** for multi-term **Boolean AND**, then **TF-IDF** ranking, printed as `score url`.
+- **Tests:** mocked HTTP for the crawler; CLI coverage for `main`.
 
 ## How it works
 
-1. **`build`** crawls [quotes.toscrape.com](https://quotes.toscrape.com/) page by page (polite gaps between requests).
-2. The **crawler** returns each page as `(url, plain text)`.
-3. The **indexer** tokenises the text and updates the **inverted index** (word → URLs → frequency and positions).
-4. The index is **saved** to `data/index.json`.
-5. **`print <word>`** looks up **one** term and shows where it appears.
-6. **`find <terms...>`** lists pages whose text contains **all** terms (AND), ranked by TF-IDF.
+1. **`build`** crawls the site with politeness; the **crawler** returns each page as `(url, plain text)`.
+2. The **indexer** tokenises text and builds the inverted index; results are written to **`data/index.json`**.
+3. **`load`** reads the JSON into memory (or **`print`** / **`find`** **auto-load** it when you start fresh).
+4. **`print <word>`** shows postings; **`find <terms...>`** keeps pages that match **all** terms (AND), then ranks them by **TF-IDF**.
+
+## Architecture
+
+- **`crawler.py`** — fetches pages, extracts quote-focused text (with fallback), follows same-host links.
+- **`indexer.py`** — builds the inverted index (term → URL → frequency and positions).
+- **`search.py`** — `print` lookups and TF-IDF-ranked `find`.
+- **`main.py`** — CLI (`build`, `load`, `print`, `find`) and JSON persistence under `data/index.json`.
 
 ## Repository layout
 
@@ -104,12 +108,11 @@ Postings for 'nonsense':
     positions: [42]
 ```
 
-**`find`** with two terms (pages must contain both; higher score = more relevant):
+**`find`** (multi-term AND, then TF-IDF). Representative ranked lines from a real full **`build`**—scores are four decimal places; exact URLs depend on your query and index:
 
 ```text
-$ python src/main.py find good friends
-0.8732 https://quotes.toscrape.com/page/1/
-0.6410 https://quotes.toscrape.com/page/2/
+13.9710 https://quotes.toscrape.com/author/Albert-Einstein
+6.6379 https://quotes.toscrape.com/page/2/
 ```
 
 ## Testing
@@ -119,6 +122,8 @@ Run the full suite:
 ```bash
 pytest
 ```
+
+`tests/conftest.py` adds `src/` to `sys.path` by walking upward from the test directory until it finds `src/indexer.py`, so imports work whether you run `pytest` from the repository root or from `tests/`.
 
 Optional coverage (shows lines not exercised by tests):
 
@@ -131,15 +136,15 @@ On some **macOS** setups, `pytest` may still print one harmless **urllib3 / Libr
 ## Design decisions (short)
 
 - **Inverted index:** maps each canonical term to URLs with `PagePosting` (frequency + positions in the page token stream).
-- **Tokenisation:** lowercased alphanumeric tokens; punctuation removed; hyphens split words (same rules for indexing and queries).
+- **Tokenisation:** lowercased alphanumeric tokens; punctuation removed; anything outside ``[a-z0-9]`` splits tokens (hyphens, apostrophes—so ``don't`` → ``don``, ``t``; same rules for indexing and queries).
 - **`find`:** intersection of URL sets per term (AND), not phrase proximity.
 - **Ranking:** after AND filtering, each remaining page is scored with TF-IDF (`sum(tf * idf)` over query terms) and sorted by descending score; URL is used as deterministic tie-break.
 - **Crawler:** breadth-first traversal of same-host links; text from each ``div.quote span.text`` when present (quotes.toscrape.com layout), else whole-page visible text (scripts/styles stripped).
 - **Politeness:** delay before every request after the first, including after failures—keeps spacing between outbound calls predictable.
 
-## Tiny benchmark note
+## Benchmarking
 
-I compared the old baseline (Boolean AND + alphabetical URL sort) against the current TF-IDF ranked search on the same built corpus (`data/index.json`), using `time.perf_counter()` over 2,000 repeated runs per query in local environment.
+I compared the old baseline (Boolean AND + alphabetical URL sort) against the current TF-IDF ranked search on the same built corpus (`data/index.json`), using `time.perf_counter()` over 2,000 repeated runs per query in a local environment.
 
 | Query | Baseline AND + alpha sort (ms/query) | AND + TF-IDF rank (ms/query) | Overhead |
 |---|---:|---:|---:|
@@ -150,17 +155,13 @@ I compared the old baseline (Boolean AND + alphabetical URL sort) against the cu
 | `life` | 0.0172 | 0.0477 | +178.1% |
 | **Average** | **0.0121** | **0.0297** | **+145.6%** |
 
-Interpretation: TF-IDF ranking adds a small absolute query-time cost (about `+0.018 ms/query` on this corpus) while materially improving result ordering for demos and relevance.
+TF-IDF ranking adds a small absolute query-time cost (about `+0.018 ms/query` on this corpus) while improving result ordering for demos and relevance. Because tag pages also contain quote cards, they remain valid indexed documents and may rank highly for some queries—this follows from full-site crawling and TF-IDF scoring, not from a broken ranker.
 
 ## Error handling / edge cases
 
-- **Empty `find`:** prints a clear message; no crash.
+- **Empty `find`:** `python src/main.py find` with no terms (allowed by argparse) prints **No query terms.** and exits cleanly.
 - **Missing index file:** `load` / `print` / `find` report an error when no `data/index.json` exists yet.
 - **Unknown word (`print`):** message that there are no postings.
 - **No matching pages (`find`):** message when the AND query matches nothing.
 - **Crawler:** failed requests and non-200 responses are recorded and skipped without stopping the crawl.
 - **Case:** indexing and search are case-insensitive.
-
-## GenAI declaration
-
-Declare any generative AI tools used (and reflect critically in your video), per the module’s green-category rules and your submission checklist.
