@@ -204,6 +204,9 @@ cython_debug/
 # macOS
 .DS_Store
 
+# Local demo / video prep notes (not part of submission)
+NOTES_VIDEO.md
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
